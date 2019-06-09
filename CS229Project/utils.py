@@ -333,7 +333,7 @@ def eval_epoch(model, validation_data, crit):
 def create_submit_df(model, dataloader):
 
     df = pd.read_csv('data/test.csv', usecols=['id'])
-    classes = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
+    classes = ['target']
     df = df.reindex(columns=['id'] + classes)
 
     model.eval()

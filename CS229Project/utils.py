@@ -322,7 +322,8 @@ def eval_epoch(model, validation_data, crit):
         total_loss += loss.data
         tgts.append(tgt.data.cpu().numpy())
         probs.append(proba)
-
+    
+    # This gives the targets and the probability  
     tgts = np.vstack(tgts)
     probs = np.vstack(probs)
     auc = np.mean(roc_auc_score(tgts, probs))
@@ -332,7 +333,7 @@ def eval_epoch(model, validation_data, crit):
 
 def create_submit_df(model, dataloader):
 
-    df = pd.read_csv('data/test.csv', usecols=['id'])
+    df = pd.read_csv('data/cleaned_test.csv', usecols=['id'])
     classes = ['target']
     df = df.reindex(columns=['id'] + classes)
 

@@ -86,6 +86,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-train_src', required=True)
     parser.add_argument('-test_src', required=True)
+    parser.add_argument('-train_tgt', required=True)
     parser.add_argument('-save_data', required=True)
     parser.add_argument('-max_len', '--max_word_seq_len', type=int, default=400)
     parser.add_argument('-min_word_count', type=int, default=5)
@@ -154,6 +155,8 @@ def main():
     train_src_insts = convert_instance_to_idx_seq(train_src_word_insts, src_word2idx)
     test_src_insts = convert_instance_to_idx_seq(test_src_word_insts, src_word2idx)
     
+    #Load the target file
+    train_tgt = np.loadtxt(opt.train_tgt)
 
     data = {
         'settings': opt,
@@ -162,6 +165,7 @@ def main():
 
         'train': {
             'src': train_src_insts,
+            'tgt': train_tgt,
         },
             
         'test': {

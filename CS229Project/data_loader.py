@@ -7,7 +7,7 @@ class DataLoader(object):
 
     def __init__(
             self, src_word2idx,
-            src=None,
+            src=None, tgt=None,
             cuda=True, batch_size=64, shuffle=True, test=False):
 
         self.cuda = cuda
@@ -17,6 +17,7 @@ class DataLoader(object):
         self._batch_size = batch_size
 
         self._src = src
+        self._tgt = tgt
 
         src_idx2word = {idx: word for word, idx in src_word2idx.items()}
         
@@ -28,7 +29,7 @@ class DataLoader(object):
 
         self._need_shuffle = shuffle
         
-        #Decide if there is a need to shuffle the data at initialization 
+        #Decide if there is a need to shuffle the data
         if self._need_shuffle:
             self.shuffle()
 
@@ -51,7 +52,12 @@ class DataLoader(object):
 
 
     def shuffle(self):
-        random.shuffle(self._src)
+        if self._tgt is not None:
+            paired_insts = list(zip(self._src, self._tgt))
+            random.shuffle(paired_insts)
+            self._src, self._tgt = zip(*paired_insts)
+        else:
+            random.shuffle(self._src)
 
 
     def __iter__(self):
@@ -64,18 +70,15 @@ class DataLoader(object):
         return self._n_batch
 
     def next(self):
-
+        
         def pad_to_longest(insts):
 
             max_len = max(len(inst) for inst in insts)
 
             inst_data = np.array([
                 inst + [0] * (max_len - len(inst))
-            
                 for inst in insts])
 
-            #if self.test is true
-            #won't do backpropagation to save memory
             inst_data_tensor = Variable(
                 torch.LongTensor(inst_data), volatile=self.test)
 
@@ -93,9 +96,17 @@ class DataLoader(object):
             src = self._src[start_idx:end_idx]
             src_data = pad_to_longest(src)
 
-            return src_data
+            if self._tgt is not None:
+                tgt = self._tgt[start_idx:end_idx]
+                tgt = Variable(torch.FloatTensor(tgt), volatile=self.test)
+            else:
+                return src_data, None
+            if self.cuda:
+                tgt = tgt.cuda()
+            return src_data, tgt
+
         else:
-            #After an epoch, decide shuffle the data or not
+
             if self._need_shuffle:
                 self.shuffle()
 

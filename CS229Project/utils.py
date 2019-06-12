@@ -9,10 +9,15 @@ import os
 import math
 import shutil
 import torch.nn.functional as F
+import torch.nn as nn
+
+
 
 import torch
 from torch.autograd import Variable
 from torch.nn import init
+
+#from tensorboardX import SummaryWriter
 
 
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -257,7 +262,7 @@ def evaluation(data_set_path, prediction_path):
 
 
 
-def train_epoch(model, training_data, crit, optimizer):
+def train_epoch(model, training_data, crit, optimizer, ite, writer):
     ''' Epoch operation in training phase'''
 
     model.train()
@@ -271,18 +276,31 @@ def train_epoch(model, training_data, crit, optimizer):
             training_data, mininterval=2,
             desc='  - (Training)   ', leave=False):
 
-        src, tgt = batch
+        src, src_char, tgt = batch
         tgt = torch.unsqueeze(tgt, 1)
 
-        # forward
+
+
+
         optimizer.zero_grad()
-        pred = model(src)
+
+        #pred = model(src, src_char)
+        pred = data_parallel(model, input = (src, src_char), device_ids = ['cuda:0','cuda:1','cuda:2','cuda:3'])
         proba = F.sigmoid(pred).data.cpu().numpy()
 
-        # backward
+
+
+
+
         loss = crit(pred, tgt)
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
         optimizer.step()
+        #Add loss value to tensorboard
+        writer.add_scalar('loss value', loss, ite)
+
+        ite += 1
+        ######
 
         n_total += 1
         total_loss += loss.data
@@ -294,7 +312,7 @@ def train_epoch(model, training_data, crit, optimizer):
 
     auc = np.mean(roc_auc_score(tgts, probs))
 
-    return total_loss/n_total, auc
+    return total_loss/n_total, auc, ite
 
 
 def eval_epoch(model, validation_data, crit):
@@ -310,11 +328,12 @@ def eval_epoch(model, validation_data, crit):
             validation_data, mininterval=2,
             desc='  - (Validation) ', leave=False):
 
-        src, tgt = batch
+        src, src_char, tgt = batch
+
         tgt = torch.unsqueeze(tgt, 1)
 
         # forward
-        pred = model(src)
+        pred = model(src, src_char)
         loss = crit(pred, tgt)
         proba = F.sigmoid(pred).data.cpu().numpy()
 
@@ -327,13 +346,14 @@ def eval_epoch(model, validation_data, crit):
     tgts = np.vstack(tgts)
     probs = np.vstack(probs)
     auc = np.mean(roc_auc_score(tgts, probs))
-
+    
+    #0.1 meed to be replaced by auc
     return total_loss/n_total, auc, probs
 
 
 def create_submit_df(model, dataloader):
 
-    df = pd.read_csv('data/cleaned_test.csv', usecols=['id'])
+    df = pd.read_csv('dataset/cleaned_new_test.csv', usecols=['id'])
     classes = ['target']
     df = df.reindex(columns=['id'] + classes)
 
@@ -344,16 +364,40 @@ def create_submit_df(model, dataloader):
             dataloader, mininterval=2,
             desc='  - (Creating submission file) ', leave=False):
 
-        src, *_ = batch
+        src, src_char, *_ = batch
 
-        pred = model(src)
+        pred = model(src, src_char)
         proba = F.sigmoid(pred).data.cpu().numpy()
         probs.append(proba)
-
     probs = np.vstack(probs)
     df[classes] = probs
     print('    - [Info] The submission file has been created.')
     return df
+
+
+#This is for the parallelize in diffrent GPUs
+def data_parallel(module, input, device_ids, output_device=None):
+    if not device_ids:
+        return module(input)
+
+    if output_device is None:
+        output_device = device_ids[0]
+
+    replicas = nn.parallel.replicate(module, device_ids)
+    inputs = nn.parallel.scatter(input, device_ids)
+    replicas = replicas[:len(inputs)]
+    outputs = nn.parallel.parallel_apply(replicas, inputs)
+    return nn.parallel.gather(outputs, output_device)
+
+
+
+
+
+
+
+
+
+
 
 
 

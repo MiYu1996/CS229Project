@@ -104,10 +104,10 @@ class baseline:
 
        
     def _train_model(self, mode):
-        assert mode in ['Logistic', 'NB', 'SVM']
+        assert mode in ['Logistic', 'NB', 'SVM', 'All']
         #train the logistic regression model
         #And will save the prediction for data to the save_path specified
-        if mode == 'Logistic':
+        if mode == 'Logistic' or mode == 'All':
             print('*' * 25)
             print('start training!')
             print('*' * 25)
@@ -144,7 +144,7 @@ class baseline:
             del prediction
             del classifier
 
-        elif mode == 'NB':
+        if mode == 'NB' or mode == 'All':
             #Reinitialize the prediction 
             prediction_naive = {'id': self.test_df['id']}
             train_target = self.train_df['target'] >= 0.5
@@ -174,8 +174,9 @@ class baseline:
             print('Prediction for Naive Bayes Saved Successfully!')
             print('*' * 25)
         
-        else:
+        if mode == 'SVM' or mode == 'All':
             #Reinitialize the prediction
+            #This current does not work, will out of memory
             prediction_svm = {'id': self.test_df['id']}
             train_target = self.train_df['target'] >= 0.5
 
@@ -252,8 +253,8 @@ if __name__ == "__main__":
     ### test run for the Logistic regression
     #Try on training and dev set
 
-    train_path = '/Users/MiYu/Desktop/phd/ThirdQuarter/CS229/Projects/ProjectCode/dataset/cleaned_new_train.csv'
-    test_path = '/Users/MiYu/Desktop/phd/ThirdQuarter/CS229/Projects/ProjectCode/dataset/cleaned_dev.csv'
+    train_path = 'dataset/cleaned_new_train.csv'
+    test_path = 'dataset/cleaned_new_test.csv'
     
     #Since we already extracted and saved the feature, we just need to load the extracted features
     #model._extract(word_vectorizer_path, char_vectorizer_path, mode = 'pre-trained')
@@ -263,23 +264,23 @@ if __name__ == "__main__":
     #train_path = '/Users/MiYu/Desktop/phd/ThirdQuarter/CS229/Projects/ProjectCode/dataset/tiny_train.csv'
     train_df = pd.read_csv(train_path)
     test_df = pd.read_csv(test_path)
-    word_vectorizer_path = '/Users/MiYu/Desktop/phd/ThirdQuarter/CS229/Projects/ProjectCode/features/word_tfidf.pickle'
-    char_vectorizer_path = '/Users/MiYu/Desktop/phd/ThirdQuarter/CS229/Projects/ProjectCode/features/char_tfidf.pickle' 
+    word_vectorizer_path = 'features/word_tfidf.pickle'
+    char_vectorizer_path = 'features/char_tfidf.pickle' 
     
     model = baseline(train_df, test_df)
     model._extract(word_vectorizer_path, char_vectorizer_path, mode = 'pre-trained')
-    model._train_model(mode = 'SVM')
+    model._train_model(mode = 'All')
 
 
-    #prediction_path_Logistic = '/Users/MiYu/Desktop/phd/ThirdQuarter/CS229/Projects/ProjectCode/Logistic_prediction.csv'
-    #prediction_path_naive = '/Users/MiYu/Desktop/phd/ThirdQuarter/CS229/Projects/ProjectCode/naive_prediction.csv'
-    prediction_path_svm = '/Users/MiYu/Desktop/phd/ThirdQuarter/CS229/Projects/ProjectCode/svm_prediction.csv'
+    prediction_path_Logistic = 'Logistic_prediction.csv'
+    prediction_path_naive = 'naive_prediction.csv'
+    prediction_path_svm = 'svm_prediction.csv'
 
-    #print('The final metric for Logistic Regression is ' + str(utils.evaluation(test_path,prediction_path_Logistic)))
+    print('The final metric for Logistic Regression is ' + str(utils.evaluation(test_path,prediction_path_Logistic)))
 
-    #print('The final metric for Naive Bayes is ' + str(utils.evaluation(test_path,prediction_path_naive)))
+    print('The final metric for Naive Bayes is ' + str(utils.evaluation(test_path,prediction_path_naive)))
 
-    print('The final metric for Naive Bayes is ' + str(utils.evaluation(test_path,prediction_path_svm)))
+    print('The final metric for SVM is ' + str(utils.evaluation(test_path,prediction_path_svm)))
 
 
     
